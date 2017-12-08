@@ -71,6 +71,13 @@
                          -o-transition-duration: 0.5s;
                             transition-duration: 0.5s;
                 }
+                .app-error {
+                    background: red;
+                    -webkit-transition-duration: 0.5s;
+                       -moz-transition-duration: 0.5s;
+                         -o-transition-duration: 0.5s;
+                            transition-duration: 0.5s;
+                }
             </style>
             <div class="icon-img plus-img btn" title="добавить всех врачей со страницы">+</div>
             <div>Список отслеживаемых врачей:</div>
@@ -85,7 +92,7 @@
     }
     function addDoctor(id, doctorId, clinicId, desc) {
         console.log('adding #'+id+': clinic #' + clinicId + '; doctor #' + doctorId + '; ' + desc);
-        var doctor = `<div id="doctor` + id + `">
+        var doctor = `<div data-id="` + id + `" id="doctor` + id + `">
             <div class="icon-img minus-img btn" title="удалить врача из списка">–</div>
             <div>` + desc + `</div>
         </div>`;
@@ -118,7 +125,7 @@
                 doctor.insertBefore(d.childNodes[0], doctor.childNodes[0]);
                 doctor.querySelector('.plus-img').onclick = function() {
                     event.stopPropagation();
-                    if (!(doctor.getAttribute('data-id') in observerDoctorList)) {
+                    if (!(calcHash(doctor.getAttribute('data-id')) in observerDoctorList)) {
                         addDoctor(
                             calcHash(doctor.getAttribute('data-id')),
                             doctor.getAttribute('data-id'),
@@ -136,7 +143,7 @@
             return;
         }
         doctors.forEach(function(doctor) {
-            if (!(doctor.getAttribute('data-id') in observerDoctorList)) {
+            if (!(calcHash(doctor.getAttribute('data-id')) in observerDoctorList)) {
                 addDoctor(
                     calcHash(doctor.getAttribute('data-id')),
                     doctor.getAttribute('data-id'),
@@ -153,9 +160,15 @@
             'doctor_form-clinic_id': clinicId,
         };
         document.querySelector('#doctor'+id).classList.remove('app-found');
+        document.querySelector('#doctor'+id).classList.remove('app-error');
         document.querySelector('#doctor'+id).classList.add('app-checking');
         $.post(url, data)
         .done(function(data) {
+            document.querySelector('#doctor'+id).classList.remove('app-checking');
+            if (!data.success){
+                document.querySelector('#doctor'+id).classList.add('app-error');
+                return;
+            }
             var apps = [];
             data.response.forEach(function(page){
                 page.forEach(function(day) {
@@ -165,7 +178,6 @@
                 });
             });
             console.log(apps.length);
-            document.querySelector('#doctor'+id).classList.remove('app-checking');
             if (apps.length > 0) {
                 document.querySelector('#doctor'+id).classList.add('app-found');
                 player.play();
@@ -267,28 +279,38 @@
         };
     }
 
-    var turnOffAllHashchangeTimers = false;
+    var turnOffDoctorListSearch = false;
+    var turnOffPatientFormSearch = false;
     $(window).bind('hashchange', function() {
-        console.log('hashchange fired');
         // look for doctor-list for 10 seconds
-        var counts = 0;
-        var timer = setInterval(function() {
-            counts++;
+        var countDoctors = 0;
+        var timerDoctors = setInterval(function() {
+            countDoctors++;
             var doctorList = document.querySelector('#doctor_list');
             var patientForm = document.querySelector('#patient_form');
             if (doctorList && doctorList.innerText.trim() !== '') {
-                clearInterval(timer);
-                turnOffAllHashchangeTimers = true;
+                clearInterval(timerDoctors);
+                turnOffDoctorListSearch = true;
                 hookDoctors();
             }
+            if ((countDoctors > 20) || (turnOffDoctorListSearch)) {
+                clearInterval(timerDoctors);
+                turnOffDoctorListSearch = false;
+            }
+        }, 500);
+        // look for patient form for 2 seconds
+        var countPatient = 0;
+        var timerPatient = setInterval(function() {
+            countPatient++;
+            var patientForm = document.querySelector('#patient_form');
             if (patientForm && patientForm.innerText.trim() !== '') {
-                clearInterval(timer);
-                turnOffAllHashchangeTimers = true;
+                clearInterval(timerPatient);
+                turnOffPatientFormSearch = true;
                 redrawPatientForm();
             }
-            if ((counts > 20) || (turnOffAllHashchangeTimers)) {
-                clearInterval(timer);
-                turnOffAllHashchangeTimers = false;
+            if ((countPatient > 4) || (turnOffPatientFormSearch)) {
+                clearInterval(timerPatient);
+                turnOffPatientFormSearch = false;
             }
         }, 500);
     });
