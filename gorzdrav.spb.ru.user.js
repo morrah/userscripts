@@ -269,7 +269,15 @@
                 patientForm.forEach(function(key){
                     var field = document.querySelector(key);
                     if (field) {
-                        field.value = patientList[id][key];
+                        field.value = patientList[id][key] || '';
+                        // trigger onchange for backbone
+                        if ("createEvent" in document) {
+                            var evt = document.createEvent('HTMLEvents');
+                            evt.initEvent('change', false, true);
+                            field.dispatchEvent(evt);
+                        }
+                        else
+                            field.fireEvent('onchange');
                     }
                 });
             };
@@ -340,6 +348,7 @@
         'input#id_patient_form-insurance_number',
         'input#id_patient_form-email',
         'input#id_patient_form-phone',
+        'input#id_patient_form-middle_name',
     ];
     $(window).trigger('hashchange');
 })();
